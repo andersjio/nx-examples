@@ -23,9 +23,9 @@ spec:
         mountPath: /app/
     resources:
       limits:
-        memory: "750Mi" # absolute minimum must be 5gb, should likely be 6gb
+        memory: "1500Mi"
       requests:
-        memory: "500Mi"
+        memory: "1000Mi"
     livenessProbe:
       exec:
         command:
@@ -105,7 +105,7 @@ pipeline {
                 container('kubectl-pod'){
                     script {
                         env.WORKSPACE_PVC = "pvc-workspace-${JENKINS_AGENT_NAME}"
-                        env.BASE_BRANCH = "master"
+                        env.BASE_BRANCH = "main"
                     }
                 }
             }
@@ -124,7 +124,7 @@ pipeline {
                 stage('Yarn install'){
                     steps{
                         container('cwb-lint'){
-                            sh ''' yarn --cache-folder /app/.yarn-cache '''
+                            sh ''' node -v && yarn --cache-folder /app/.yarn-cache '''
                         }
                     }
                 }
