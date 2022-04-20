@@ -1,3 +1,5 @@
+def GIT_REPO_URL = "git@github.com:andersjio/nx-examples.git"
+def BRANCH_NAME = "main"
 def cwbPod = """
 spec:
   containers:
@@ -101,6 +103,15 @@ pipeline {
         }
     }
     stages {
+        stage('Checkout source code'){
+            steps {
+                container('cwb-lint') {
+                  git branch: "$BRANCH_NAME",
+                  credentialsId: 'private-ssh',
+                  url: "$GIT_REPO_URL"
+                }
+            }
+        }
         stage("Set env"){
             steps{
                 container('alpine-pod'){
@@ -111,7 +122,6 @@ pipeline {
             }
         }
         stage('Setup Workspace') {
-            checkout scm
             agent {
                 kubernetes {
                     label "${JOB_NAME}-${BUILD_NUMBER}-workspace"
