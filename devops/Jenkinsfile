@@ -76,8 +76,8 @@ spec:
 kubectlYaml= """
 spec:
   containers:
-  - name: kubectl-pod
-    image: kubectl:v1
+  - name: alpine-pod
+    image: alpine/git
     command:
     - sleep
     args:
@@ -102,7 +102,7 @@ pipeline {
     stages {
         stage("Set env"){
             steps{
-                container('kubectl-pod'){
+                container('alpine-pod'){
                     script {
                         env.WORKSPACE_PVC = "pvc-workspace-${JENKINS_AGENT_NAME}"
                         env.BASE_BRANCH = get_base_branch()
