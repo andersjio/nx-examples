@@ -100,17 +100,6 @@ pipeline {
         }
     }
     stages {
-        stage("Set env"){
-            steps{
-                container('alpine-pod'){
-                    script {
-                        env.WORKSPACE_PVC = "pvc-workspace-${JENKINS_AGENT_NAME}"
-                        env.BASE_BRANCH = get_base_branch()
-                    }
-                }
-            }
-        }
-
         stage('Setup Workspace') {
             agent {
                 kubernetes {
@@ -136,38 +125,14 @@ pipeline {
                     label "${JOB_NAME}-${BUILD_NUMBER}-lint"
                     yaml cwbPod
                     workspaceVolume persistentVolumeClaimWorkspaceVolume(claimName: "$WORKSPACE_PVC", readOnly: false)
-					showRawYaml false
+					          showRawYaml false
                 }
             }
             stages{
-				stage('Get Projects') {
-					steps {
-                        container('cwb-lint'){
-                            script {
-                                affected_applications 		= getAffectedApps(env.BASE_BRANCH)
-                                affected_libraries 			= getAffectedLibs(env.BASE_BRANCH)
-                                nx_specific_test_projects 	= getListToTest(affected_applications,affected_libraries)
-                            }
-                        }
-					}
-				}
-                stage ('List Applications & Libraries') {
-                    steps {
-                        script {
-                            println "Libraries and Applications affected by current change"
-                            println "Comparing to git-hash ${BASE_BRANCH}"
-                            println "-------------------------------------------"
-                            nx_specific_test_projects.each { library ->
-                                println "- ${library}"
-                            }
-                            println "-------------------------------------------"
-                        }
-                    }
-                }
                 stage('Linting'){
                     steps{
                         container('cwb-lint'){
-							            sh "yarn affected:lint --base=${BASE_BRANCH} --parallel --maxParallel=4"
+							            sh " nx run-many --target=lint --all"
                         }
                     }
                 }
@@ -185,12 +150,12 @@ pipeline {
     }
     post {
         always {
-            container('kubectl-pod'){
-				junit (allowEmptyResults: true, testResults: "**/test-results-unit.xml")
+            container('alpine-pod'){
+				      junit (allowEmptyResults: true, testResults: "**/test-results-unit.xml")
             }
         }
 		aborted {
-            container('kubectl-pod'){
+            container('alpine-pod'){
                 sh """
 					echo "If you see this message in the log:\n (Exit Code: 137, Reason: Error)"
 					echo "This might be due to a Out-of-Memory (OOM) error"
