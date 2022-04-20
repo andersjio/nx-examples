@@ -100,6 +100,15 @@ pipeline {
         }
     }
     stages {
+        stage("Set env"){
+            steps{
+                container('alpine-pod'){
+                    script {
+                        env.WORKSPACE_PVC = "pvc-workspace-${JENKINS_AGENT_NAME}"
+                    }
+                }
+            }
+        }
         stage('Setup Workspace') {
             agent {
                 kubernetes {
