@@ -105,7 +105,7 @@ pipeline {
                 container('kubectl-pod'){
                     script {
                         env.WORKSPACE_PVC = "pvc-workspace-${JENKINS_AGENT_NAME}"
-                        env.BASE_BRANCH = "main"
+                        env.BASE_BRANCH = get_base_branch()
                     }
                 }
             }
