@@ -111,6 +111,7 @@ pipeline {
             }
         }
         stage('Setup Workspace') {
+            checkout scm
             agent {
                 kubernetes {
                     label "${JOB_NAME}-${BUILD_NUMBER}-workspace"
