@@ -126,6 +126,13 @@ pipeline {
             }
         }
     }
+    post {
+        always {
+            container('alpine-pod'){
+				      junit (allowEmptyResults: true, testResults: "**/test-results-unit.xml")
+            }
+        }
+    }
 }
 
 def generateUnitTestStage(job, pod_file, pvc, work_time_simulation) {
@@ -142,7 +149,7 @@ def generateUnitTestStage(job, pod_file, pvc, work_time_simulation) {
                         container('test-pod') {
                             sh """
                                 echo "Running tests for project: ${job} in $HOSTNAME"
-                                yarn run test --project ${job}
+                                nx run-many --target=test --projects ${job}  --coverage
                                 sleep ${work_time_simulation} #Strictly added to simulate a bit of build time per pod
                                 echo "Done with tests for ${job}"
                             """
