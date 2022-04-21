@@ -1,5 +1,5 @@
 def GIT_REPO_URL = "git@github.com:andersjio/nx-examples.git"
-def BRANCH_NAME = "main"
+//def BRANCH_NAME = "main"
 def WORK_TIME_SIMULATION = 10
 def testPodYaml = """
 spec:
@@ -54,7 +54,7 @@ pipeline {
         stage('Checkout source code'){
             steps {
                 container('test-pod') {
-                  git branch: "$BRANCH_NAME",
+                  git branch: env.BRANCH_NAME,
                   credentialsId: 'private-ssh',
                   url: "$GIT_REPO_URL"
                 }
