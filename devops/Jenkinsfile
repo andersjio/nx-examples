@@ -165,7 +165,7 @@ pipeline {
                     def json = readJSON file: 'projects.json'
                     def nx_projects = json["projects"]
                     parallel nx_projects.collectEntries {
-                        ["${it}" : generateStage(it, cwbUnitTestPod, "$WORKSPACE_PVC")]
+                        ["${it}" : generateStage(it, cwbPod, "$WORKSPACE_PVC")]
                     }
                 }
             }
@@ -201,8 +201,8 @@ def generateStage(job, pod_file, pvc) {
                 workspaceVolume: persistentVolumeClaimWorkspaceVolume(claimName: pvc, readOnly: false)
                 )  {
                 node(POD_LABEL) {
-                    stage("${job}") {
-                        container('cwb-test') {
+                    stage("Unit test ${job}") {
+                        container('cwb-lint') {
                             sh """
                                 echo "Running tests for project: ${job} in $HOSTNAME"
                                 yarn run test --project ${job}
