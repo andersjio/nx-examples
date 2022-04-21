@@ -8,4 +8,14 @@ module.exports = {
   setupFilesAfterEnv: ['<rootDir>/src/test-setup.ts'],
   globals: { 'ts-jest': { tsconfig: '<rootDir>/tsconfig.spec.json' } },
   displayName: 'shared-product-ui',
+  reporters: [
+		'default',
+		[
+			'jest-junit',
+			{
+				outputDirectory: './coverage/libs/shared/product/ui',
+				outputName: './test-results-unit.xml',
+			}
+		]
+	]
 };

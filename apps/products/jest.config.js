@@ -20,4 +20,14 @@ module.exports = {
     'jest-preset-angular/build/serializers/html-comment',
   ],
   transformIgnorePatterns: ['node_modules/(?!.*.mjs$)'],
+	reporters: [
+		'default',
+		[
+			'jest-junit',
+			{
+				outputDirectory: './coverage/apps/products',
+				outputName: './test-results-unit.xml',
+			}
+		]
+	]
 };

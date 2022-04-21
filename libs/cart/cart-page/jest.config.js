@@ -8,4 +8,14 @@ module.exports = {
   setupFilesAfterEnv: ['<rootDir>/src/test-setup.ts'],
   globals: { 'ts-jest': { tsconfig: '<rootDir>/tsconfig.spec.json' } },
   displayName: 'cart-cart-page',
+	reporters: [
+		'default',
+		[
+			'jest-junit',
+			{
+				outputDirectory: './coverage/libs/cart/cart-page',
+				outputName: './test-results-unit.xml',
+			}
+		]
+	]
 };

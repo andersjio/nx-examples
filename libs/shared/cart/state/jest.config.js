@@ -20,4 +20,14 @@ module.exports = {
     '^.+.(ts|mjs|js|html)$': 'jest-preset-angular',
   },
   transformIgnorePatterns: ['node_modules/(?!.*.mjs$)'],
+	reporters: [
+		'default',
+		[
+			'jest-junit',
+			{
+				outputDirectory: './coverage/libs/shared/cart/state',
+				outputName: './test-results-unit.xml',
+			}
+		]
+	]
 };
