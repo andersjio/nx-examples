@@ -2,20 +2,14 @@
   "projects": [
     "products-product-detail-page",
     "shared-product-state",
-    "shared-product-types",
-    "shared-product-data",
     "products-home-page",
     "shared-cart-state",
     "shared-product-ui",
-    "shared-e2e-utils",
     "cart-cart-page",
-    "shared-assets",
     "shared-header",
-    "shared-jsxify",
-    "shared-styles",
-    "products-e2e",
-    "cart-e2e",
     "products",
-    "cart"
+    "cart",
   ]
 }
+
+

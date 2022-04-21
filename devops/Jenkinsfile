@@ -1,5 +1,6 @@
 def GIT_REPO_URL = "git@github.com:andersjio/nx-examples.git"
 def BRANCH_NAME = "main"
+def WORK_TIME_SIMULATION = 30
 def cwbPod = """
 spec:
   containers:
@@ -41,39 +42,6 @@ spec:
     persistentVolumeClaim:
         claimName: cwb-pvc
 """
-
-def cwbUnitTestPod = """
-spec:
-  containers:
-  - name: cwb-test
-    image: nx-example-build-node:14.17.4
-    imagePullPolicy: IfNotPresent
-    command:
-    - sleep
-    args:
-    - infinity
-    volumeMounts:
-      - name: cwb-vol
-        mountPath: /app/
-    resources:
-      limits:
-        memory: "2.5Gi"
-      requests:
-        memory: "500Mi"
-    livenessProbe:
-      exec:
-        command:
-          - bin/bash
-          - -c
-          - ./liveness.sh
-      initialDelaySeconds: 60
-      timeoutSeconds: 25
-  volumes:
-  - name: cwb-vol
-    persistentVolumeClaim:
-        claimName: cwb-pvc
-"""
-
 
 kubectlYaml= """
 spec:
@@ -196,7 +164,7 @@ def generateStage(job, pod_file, pvc) {
         def project = job
         stage(job) {
             podTemplate(
-                yamlFile:pod_file,
+                yaml:pod_file,
                 showRawYaml: false,
                 workspaceVolume: persistentVolumeClaimWorkspaceVolume(claimName: pvc, readOnly: false)
                 )  {
@@ -206,6 +174,7 @@ def generateStage(job, pod_file, pvc) {
                             sh """
                                 echo "Running tests for project: ${job} in $HOSTNAME"
                                 yarn run test --project ${job}
+                                sleep ${WORK_TIME_SIMULATION}
                                 echo "Done with tests for ${job}!"
                             """
                         }
@@ -214,49 +183,4 @@ def generateStage(job, pod_file, pvc) {
             }
         }
     }
-}
-
-
-def get_base_branch () {
-	return sh (script: 'devops/getBaseBranch.sh', returnStdout: true).trim()
-}
-
-def getAffectedApps(gitBase) {
-	return sh (script: """
-                yarn run affected:apps --base=${gitBase} --plain | grep -v yarn | grep -v Done | grep -v node_modules
-                """, returnStdout: true).replace(' ',' ').trim()
-}
-
-def getAffectedLibs(gitBase) {
-	return sh (script: """
-                yarn run affected:libs --base=${gitBase} --plain | grep -v yarn | grep -v Done | grep -v node_modules
-            """, returnStdout: true).replace(' ',' ').trim()
-}
-
-def getListToTest(affected_applications,affected_libraries) {
-	def projects = readJSON file: 'angular.json'
-	testAbleProjectList = []
-	String[] myApplications = affected_applications.split(' ')
-	String[] myLibraries = affected_libraries.split(' ')
-	for (String application: myApplications) {
-		projects['projects'].each { project, value ->
-			if (project != application) {
-				return
-			}
-			if (value['architect'].keySet().contains('test')) {
-				testAbleProjectList.add(project);
-			}
-		}
-	}
-	for (String library: myLibraries) {
-		projects['projects'].each { project, value ->
-			if (project != library) {
-				return
-			}
-			if (value['architect'].keySet().contains('test')) {
-				testAbleProjectList.add(project);
-			}
-		}
-	}
-	return testAbleProjectList
 }
