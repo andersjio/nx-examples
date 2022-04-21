@@ -153,7 +153,7 @@ pipeline {
                 stage('Linting'){
                     steps{
                         container('cwb-lint'){
-							            sh " nx run-many --target=lint --all"
+							            sh "nx run-many --target=lint --all"
                         }
                     }
                 }
@@ -162,7 +162,9 @@ pipeline {
         stage('Stages to run in Parallel') {
             steps {
                 script {
-                    parallel nx_specific_test_projects.collectEntries {
+                    def json = readJSON file: 'projects.json'
+                    def nx_projects = json["projects"]
+                    parallel nx_projects.collectEntries {
                         ["${it}" : generateStage(it, cwbUnitTestPod, "$WORKSPACE_PVC")]
                     }
                 }
