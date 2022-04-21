@@ -108,32 +108,14 @@ pipeline {
                 }
             }
         }
-        stage('Lint and Tests') {
-            agent {
-                kubernetes {
-                    label "${JOB_NAME}-${BUILD_NUMBER}-lint"
-                    yaml cwbPod
-                    workspaceVolume persistentVolumeClaimWorkspaceVolume(claimName: "$WORKSPACE_PVC", readOnly: false)
-					          showRawYaml false
-                }
-            }
-            stages{
-                stage('Linting'){
-                    steps{
-                        container('cwb-lint'){
-							            sh "nx run-many --target=lint --all"
-                        }
-                    }
-                }
-            }
-        }
+
         stage('Stages to run in Parallel') {
             steps {
                 script {
                     def json = readJSON file: 'projects.json'
                     def nx_projects = json["projects"]
                     parallel nx_projects.collectEntries {
-                        ["${it}" : generateStage(it, cwbPod, "$WORKSPACE_PVC")]
+                        ["${it}" : generateUnitTestStage(it, cwbPod, "$WORKSPACE_PVC", "$WORK_TIME_SIMULATION")]
                     }
                 }
             }
@@ -142,24 +124,13 @@ pipeline {
     post {
         always {
             container('alpine-pod'){
-				      junit (allowEmptyResults: true, testResults: "**/test-results-unit.xml")
+				      junit (allowEmptyResults: true, testResults: "**/clover.xml")
             }
         }
-		aborted {
-            container('alpine-pod'){
-                sh """
-					echo "If you see this message in the log:\n (Exit Code: 137, Reason: Error)"
-					echo "This might be due to a Out-of-Memory (OOM) error"
-
-                """
-            }
-		}
-
-
     }
 }
 
-def generateStage(job, pod_file, pvc) {
+def generateUnitTestStage(job, pod_file, pvc, work_time_simulation) {
     return {
         def project = job
         stage(job) {
@@ -173,9 +144,9 @@ def generateStage(job, pod_file, pvc) {
                         container('cwb-lint') {
                             sh """
                                 echo "Running tests for project: ${job} in $HOSTNAME"
-                                yarn run test --project ${job}
-                                sleep ${WORK_TIME_SIMULATION}
-                                echo "Done with tests for ${job}!"
+                                yarn run test --project ${job} --codeCoverage
+                                sleep ${work_time_simulation} #Strictly added to simulate a bit of build time per pod
+                                echo "Done with tests for ${job}"
                             """
                         }
                     }
