@@ -1,34 +1,21 @@
 def GIT_REPO_URL = "git@github.com:andersjio/nx-examples.git"
 def BRANCH_NAME = "main"
 def WORK_TIME_SIMULATION = 30
-def cwbPod = """
+def testPodYaml = """
 spec:
   containers:
-  - name: cwb-small
+  - name: test-pod
     image: nx-example-build-node:14.17.4
     imagePullPolicy: IfNotPresent
     command:
     - sleep
     args:
     - infinity
-    volumeMounts:
-      - name: cwb-vol
-        mountPath: /app/
-  - name: cwb-lint
-    image: nx-example-build-node:14.17.4
-    imagePullPolicy: IfNotPresent
-    command:
-    - sleep
-    args:
-    - infinity
-    volumeMounts:
-      - name: cwb-vol
-        mountPath: /app/
     resources:
       limits:
-        memory: "1500Mi"
-      requests:
         memory: "1000Mi"
+      requests:
+        memory: "500Mi"
     livenessProbe:
       exec:
         command:
@@ -37,10 +24,6 @@ spec:
           - ./liveness.sh
       initialDelaySeconds: 60
       timeoutSeconds: 25
-  volumes:
-  - name: cwb-vol
-    persistentVolumeClaim:
-        claimName: cwb-pvc
 """
 
 kubectlYaml= """
@@ -59,9 +42,6 @@ pipeline {
         timestamps()
         skipDefaultCheckout()
     }
-	environment {
-		NO_PROXY="localhost, 0.0.0.0/4201, 0.0.0.0/9876"
-	}
     agent {
         kubernetes {
             label "${JOB_NAME}-${BUILD_NUMBER}-pipeline"
@@ -73,7 +53,7 @@ pipeline {
     stages {
         stage('Checkout source code'){
             steps {
-                container('cwb-lint') {
+                container('test-pod') {
                   git branch: "$BRANCH_NAME",
                   credentialsId: 'private-ssh',
                   url: "$GIT_REPO_URL"
@@ -89,11 +69,11 @@ pipeline {
                 }
             }
         }
-        stage('Setup Workspace') {
+        stage('Yarn') {
             agent {
                 kubernetes {
-                    label "${JOB_NAME}-${BUILD_NUMBER}-workspace"
-                    yaml cwbPod
+                    label "${JOB_NAME}-${BUILD_NUMBER}-yarn"
+                    yaml testPodYaml
                     workspaceVolume persistentVolumeClaimWorkspaceVolume(claimName: "$WORKSPACE_PVC", readOnly: false)
 					          showRawYaml false
                 }
@@ -101,30 +81,48 @@ pipeline {
             stages{
                 stage('Yarn install'){
                     steps{
-                        container('cwb-lint'){
-                            sh ''' node -v && yarn --cache-folder /app/.yarn-cache '''
+                        container('test-pod'){
+                            sh """yarn install --parallel --maxParallel=4 """
+                        }
+                    }
+                }
+                stage('Linting'){
+                    steps{
+                        container('test-pod'){
+							            sh " nx run-many --target=lint --all --parallel --maxParallel=4"
                         }
                     }
                 }
             }
         }
-
+        stage('Lint') {
+            agent {
+                kubernetes {
+                    label "${JOB_NAME}-${BUILD_NUMBER}-lint"
+                    yaml testPodYaml
+                    workspaceVolume persistentVolumeClaimWorkspaceVolume(claimName: "$WORKSPACE_PVC", readOnly: false)
+					          showRawYaml false
+                }
+            }
+            stages{
+                stage('Linting'){
+                    steps{
+                        container('test-pod'){
+							            sh " nx run-many --target=lint --all --parallel --maxParallel=4"
+                        }
+                    }
+                }
+            }
+        }
         stage('Stages to run in Parallel') {
             steps {
                 script {
                     def json = readJSON file: 'projects.json'
                     def nx_projects = json["projects"]
                     parallel nx_projects.collectEntries {
-                        ["${it}" : generateUnitTestStage(it, cwbPod, "$WORKSPACE_PVC", "$WORK_TIME_SIMULATION")]
+                        ["${it}" : generateUnitTestStage(it, testPodYaml, "$WORKSPACE_PVC", "$WORK_TIME_SIMULATION")]
                     }
                 }
-            }
-        }
-    }
-    post {
-        always {
-            container('alpine-pod'){
-				      junit (allowEmptyResults: true, testResults: "**/clover.xml")
             }
         }
     }
@@ -141,10 +139,10 @@ def generateUnitTestStage(job, pod_file, pvc, work_time_simulation) {
                 )  {
                 node(POD_LABEL) {
                     stage("Unit test ${job}") {
-                        container('cwb-lint') {
+                        container('test-pod') {
                             sh """
                                 echo "Running tests for project: ${job} in $HOSTNAME"
-                                yarn run test --project ${job} --codeCoverage
+                                yarn run test --project ${job}
                                 sleep ${work_time_simulation} #Strictly added to simulate a bit of build time per pod
                                 echo "Done with tests for ${job}"
                             """
