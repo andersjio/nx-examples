@@ -5,7 +5,7 @@ def testPodYaml = """
 spec:
   containers:
   - name: test-pod
-    image: nx-example-build-node:14.17.4
+    image: abrj/nx-example-build-node:1.0.0
     imagePullPolicy: IfNotPresent
     command:
     - sleep
@@ -47,7 +47,7 @@ pipeline {
             label "${JOB_NAME}-${BUILD_NUMBER}-pipeline"
             yaml kubectlYaml
             showRawYaml false
-            workspaceVolume dynamicPVC(accessModes: "ReadWriteMany", requestsSize: "2Gi", storageClassName: "standard")
+            workspaceVolume dynamicPVC(accessModes: "ReadWriteMany", requestsSize: "2Gi", storageClassName: "gp2")
         }
     }
     stages {
