@@ -1,5 +1,5 @@
 #FROM ubuntu:20.04
-FROM node:16.8.0
+FROM node:14.17.4
 ARG NODE_VERSION=v14.17.4
 ENV TZ US
 ENV DEBIAN_FRONTEND noninteractive
@@ -9,7 +9,6 @@ RUN apt-get update && apt-get install -y \
 	curl \
 	wget \
 	make \
-	python2 \
 	python3 \
 	g++ \
 	build-essential \
@@ -51,6 +50,7 @@ RUN echo '[ -s "$NVM_DIR/bash_completion" ] && . "$NVM_DIR/bash_completion" # Th
 RUN bash -c 'source $HOME/.nvm/nvm.sh   && \
 	npm install -g yarn && \
 	npm install --prefix "$HOME/.nvm/"'
+RUN npm install -g nx
 
 COPY ./liveness.sh /
 RUN chmod +x liveness.sh
