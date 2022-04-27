@@ -1,6 +1,6 @@
 def GIT_REPO_URL = "git@github.com:andersjio/nx-examples.git"
 //def BRANCH_NAME = "main"
-def WORK_TIME_SIMULATION = 10
+def WORK_TIME_SIMULATION = 60
 def testPodYaml = """
 spec:
   containers:
@@ -13,9 +13,11 @@ spec:
     - infinity
     resources:
       limits:
-        memory: "1000Mi"
+        memory: "3000Mi"
+        cpu: "2"
       requests:
-        memory: "500Mi"
+        memory: "3000Mi"
+        cpu: "2"
     livenessProbe:
       exec:
         command:
@@ -24,6 +26,13 @@ spec:
           - ./liveness.sh
       initialDelaySeconds: 60
       timeoutSeconds: 25
+  nodeSelector:
+    role: "ng-spot"
+  tolerations:
+  - key: "jenkins-builds"
+    operator: "Equal"
+    value: "true"
+    effect: "NoSchedule"
 """
 
 kubectlYaml= """
@@ -35,6 +44,13 @@ spec:
     - sleep
     args:
     - infinity
+  nodeSelector:
+    role: "ng-spot"
+  tolerations:
+  - key: "jenkins-builds"
+    operator: "Equal"
+    value: "true"
+    effect: "NoSchedule"
 """
 
 pipeline {
@@ -46,7 +62,7 @@ pipeline {
         kubernetes {
             label "${JOB_NAME}-${BUILD_NUMBER}-pipeline"
             yaml kubectlYaml
-            showRawYaml false
+            showRawYaml true
             workspaceVolume dynamicPVC(accessModes: "ReadWriteMany", requestsSize: "2Gi", storageClassName: "efs-sc")
         }
     }
@@ -75,14 +91,14 @@ pipeline {
                     label "${JOB_NAME}-${BUILD_NUMBER}-yarn"
                     yaml testPodYaml
                     workspaceVolume persistentVolumeClaimWorkspaceVolume(claimName: "$WORKSPACE_PVC", readOnly: false)
-					          showRawYaml false
+					showRawYaml true
                 }
             }
             stages{
                 stage('Yarn install'){
                     steps{
                         container('test-pod'){
-                            sh """yarn install --parallel --maxParallel=4 """
+                            sh """yarn install"""
                         }
                     }
                 }
