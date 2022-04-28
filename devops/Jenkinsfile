@@ -133,7 +133,7 @@ pipeline {
                     label "${JOB_NAME}-${BUILD_NUMBER}-lint"
                     yaml testPodYaml
                     workspaceVolume persistentVolumeClaimWorkspaceVolume(claimName: "$PVC_NAME", readOnly: false)
-					showRawYaml false
+					          showRawYaml false
                 }
             }
             stages{
@@ -152,7 +152,7 @@ pipeline {
                     def json = readJSON file: 'projects.json'
                     def nx_projects = json["projects"]
                     parallel nx_projects.collectEntries {
-                        ["${it}" : generateUnitTestStage(it, testPodYaml, "$PVC_NAME", "$WORK_TIME_SIMULATION")]
+                        ["${it}" : generateUnitTestStage(it, testPodYaml, PVC_NAME, "$WORK_TIME_SIMULATION")]
                     }
                 }
             }
