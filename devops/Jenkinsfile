@@ -1,12 +1,13 @@
 def GIT_REPO_URL = "git@github.com:andersjio/nx-examples.git"
 //def BRANCH_NAME = "main"
-def WORK_TIME_SIMULATION = 60
+def WORK_TIME_SIMULATION = 10
+def PVC_NAME = env.JOB_BASE_NAME + "-" + env.BRANCH_NAME + "-workspace"
 def testPodYaml = """
 spec:
   containers:
   - name: test-pod
-    image: abrj/nx-example-build-node:1.0.0
-    imagePullPolicy: IfNotPresent
+    image: abrj/nx-example-build-node:1.2.0
+    imagePullPolicy: Always
     command:
     - sleep
     args:
@@ -44,6 +45,12 @@ spec:
     - sleep
     args:
     - infinity
+  - name: kubectl-pod
+    image: abrj/kubectl:1.0
+    command:
+    - sleep
+    args:
+    - infinity
   nodeSelector:
     role: "ng-spot"
   tolerations:
@@ -51,8 +58,22 @@ spec:
     operator: "Equal"
     value: "true"
     effect: "NoSchedule"
+
 """
 
+pvc = """
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: $PVC_NAME
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: efs-sc
+  resources:
+    requests:
+      storage: 2Gi
+"""
 pipeline {
     options{
         timestamps()
@@ -63,25 +84,16 @@ pipeline {
             label "${JOB_NAME}-${BUILD_NUMBER}-pipeline"
             yaml kubectlYaml
             showRawYaml true
-            workspaceVolume dynamicPVC(accessModes: "ReadWriteMany", requestsSize: "2Gi", storageClassName: "efs-sc")
+            serviceAccount "jenkins-build-sa"
+            //workspaceVolume dynamicPVC(accessModes: "ReadWriteMany", requestsSize: "2Gi", storageClassName: "efs-sc")
         }
     }
     stages {
-        stage('Checkout source code'){
+        stage('Initialize PVC and PV') {
             steps {
-                container('test-pod') {
-                  git branch: env.BRANCH_NAME,
-                  credentialsId: 'private-ssh',
-                  url: "$GIT_REPO_URL"
-                }
-            }
-        }
-        stage("Set env"){
-            steps{
-                container('alpine-pod'){
-                    script {
-                        env.WORKSPACE_PVC = "pvc-workspace-${JENKINS_AGENT_NAME}"
-                    }
+                writeFile file: "pvc.yaml", text: pvc
+                container('kubectl-pod') {
+                    sh 'kubectl apply -f pvc.yaml'
                 }
             }
         }
@@ -90,22 +102,24 @@ pipeline {
                 kubernetes {
                     label "${JOB_NAME}-${BUILD_NUMBER}-yarn"
                     yaml testPodYaml
-                    workspaceVolume persistentVolumeClaimWorkspaceVolume(claimName: "$WORKSPACE_PVC", readOnly: false)
-					showRawYaml true
+                    workspaceVolume persistentVolumeClaimWorkspaceVolume(claimName: "$PVC_NAME", readOnly: false)
+					          showRawYaml true
                 }
             }
             stages{
-                stage('Yarn install'){
-                    steps{
-                        container('test-pod'){
-                            sh """yarn install"""
+                stage('Checkout source code'){
+                    steps {
+                        container('test-pod') {
+                          git branch: env.BRANCH_NAME,
+                          credentialsId: 'private-ssh',
+                          url: "$GIT_REPO_URL"
                         }
                     }
                 }
-                stage('Linting'){
+                stage('Yarn install'){
                     steps{
                         container('test-pod'){
-							            sh " nx run-many --target=lint --all --parallel --maxParallel=4"
+                            sh """sleep 99999999 && yarn install"""
                         }
                     }
                 }
@@ -116,15 +130,15 @@ pipeline {
                 kubernetes {
                     label "${JOB_NAME}-${BUILD_NUMBER}-lint"
                     yaml testPodYaml
-                    workspaceVolume persistentVolumeClaimWorkspaceVolume(claimName: "$WORKSPACE_PVC", readOnly: false)
-					          showRawYaml false
+                    workspaceVolume persistentVolumeClaimWorkspaceVolume(claimName: "$PVC_NAME", readOnly: false)
+					showRawYaml false
                 }
             }
             stages{
                 stage('Linting'){
                     steps{
                         container('test-pod'){
-							            sh " nx run-many --target=lint --all --parallel --maxParallel=4"
+						    sh " nx run-many --target=lint --all --parallel --maxParallel=4"
                         }
                     }
                 }
@@ -136,7 +150,7 @@ pipeline {
                     def json = readJSON file: 'projects.json'
                     def nx_projects = json["projects"]
                     parallel nx_projects.collectEntries {
-                        ["${it}" : generateUnitTestStage(it, testPodYaml, "$WORKSPACE_PVC", "$WORK_TIME_SIMULATION")]
+                        ["${it}" : generateUnitTestStage(it, testPodYaml, "$PVC_NAME", "$WORK_TIME_SIMULATION")]
                     }
                 }
             }
