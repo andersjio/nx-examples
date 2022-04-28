@@ -55,6 +55,9 @@ RUN npm install -g nx
 COPY ./liveness.sh /
 RUN chmod +x liveness.sh
 
+# Copy node_modules folder to speed up yarn install
+COPY node_modules /cache/node_modules
+
 COPY ./entrypoint.sh /
 RUN chmod +x entrypoint.sh
 ENTRYPOINT ["/entrypoint.sh"]
