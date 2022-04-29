@@ -1,7 +1,9 @@
 def GIT_REPO_URL = "git@github.com:andersjio/nx-examples.git"
 //def BRANCH_NAME = "main"
 def WORK_TIME_SIMULATION = 10
-def PVC_NAME = env.JOB_BASE_NAME + "-" + env.BRANCH_NAME + "-workspace"
+def allJob = env.JOB_NAME.tokenize('/') as String[];
+def projectName = allJob[0];
+def PVC_NAME = projectName + "-" + env.BRANCH_NAME + "-workspace"
 def testPodYaml = """
 spec:
   containers:
@@ -119,38 +121,15 @@ pipeline {
                 stage('Yarn install'){
                     steps{
                         container('test-pod'){
-                            sh """sleep 99999999 && yarn install"""
+                            sh """yarn install"""
                         }
                     }
                 }
-            }
-        }
-        stage('Lint') {
-            agent {
-                kubernetes {
-                    label "${JOB_NAME}-${BUILD_NUMBER}-lint"
-                    yaml testPodYaml
-                    workspaceVolume persistentVolumeClaimWorkspaceVolume(claimName: "$PVC_NAME", readOnly: false)
-					showRawYaml false
-                }
-            }
-            stages{
-                stage('Linting'){
+                stage('Fake Linting'){
                     steps{
                         container('test-pod'){
-						    sh " nx run-many --target=lint --all --parallel --maxParallel=4"
+                            sh """Sleep 10"""
                         }
-                    }
-                }
-            }
-        }
-        stage('Stages to run in Parallel') {
-            steps {
-                script {
-                    def json = readJSON file: 'projects.json'
-                    def nx_projects = json["projects"]
-                    parallel nx_projects.collectEntries {
-                        ["${it}" : generateUnitTestStage(it, testPodYaml, "$PVC_NAME", "$WORK_TIME_SIMULATION")]
                     }
                 }
             }
