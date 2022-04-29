@@ -127,7 +127,7 @@ pipeline {
                 stage('Linting'){
                     steps{
                         container('test-pod'){
-				                  sh "cat projects.json && sleep 5"
+				                  sh "nx run-many --target=lint --all --parallel --maxParallel=4"
                         }
                     }
                 }
@@ -168,7 +168,7 @@ def generateUnitTestStage(job, pod_file, pvc, work_time_simulation) {
                         container('test-pod') {
                             sh """
                                 echo "Running tests for project: ${job} in $HOSTNAME"
-                                #nx run-many --target=test --projects ${job}  --coverage
+                                nx run-many --target=test --projects ${job}  --coverage
                                 sleep ${work_time_simulation} #Strictly added to simulate a bit of build time per pod
                                 echo "Done with tests for ${job}"
                             """
