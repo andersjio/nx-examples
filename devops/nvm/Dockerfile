@@ -51,12 +51,13 @@ RUN bash -c 'source $HOME/.nvm/nvm.sh   && \
 	npm install -g yarn && \
 	npm install --prefix "$HOME/.nvm/"'
 RUN npm install -g nx
+RUN curl -f https://get.pnpm.io/v6.16.js | node - add --global pnpm
 
 COPY ./liveness.sh /
 RUN chmod +x liveness.sh
 
 # Copy node_modules folder to speed up yarn install
-COPY node_modules /cache/node_modules
+#COPY node_modules /cache/node_modules
 
 COPY ./entrypoint.sh /
 RUN chmod +x entrypoint.sh
