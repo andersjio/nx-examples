@@ -8,7 +8,7 @@ def testPodYaml = """
 spec:
   containers:
   - name: test-pod
-    image: abrj/nx-example-build-node:1.2.0
+    image: abrj/nx-example-build-node:1.4.0
     imagePullPolicy: Always
     command:
     - sleep
