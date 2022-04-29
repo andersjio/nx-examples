@@ -1,6 +1,6 @@
 def GIT_REPO_URL = "git@github.com:andersjio/nx-examples.git"
 //def BRANCH_NAME = "main"
-def WORK_TIME_SIMULATION = 10
+def WORK_TIME_SIMULATION = 5
 def allJob = env.JOB_NAME.tokenize('/') as String[];
 def projectName = allJob[0];
 def PVC_NAME = projectName + "-" + env.BRANCH_NAME + "-workspace"
@@ -87,7 +87,6 @@ pipeline {
             yaml kubectlYaml
             showRawYaml true
             serviceAccount "jenkins-build-sa"
-            //workspaceVolume dynamicPVC(accessModes: "ReadWriteMany", requestsSize: "2Gi", storageClassName: "efs-sc")
         }
     }
     stages {
@@ -99,7 +98,7 @@ pipeline {
                 }
             }
         }
-        stage('Yarn') {
+        stage('Pipeline steps') {
             agent {
                 kubernetes {
                     label "${JOB_NAME}-${BUILD_NUMBER}-yarn"
@@ -121,14 +120,25 @@ pipeline {
                 stage('Yarn install'){
                     steps{
                         container('test-pod'){
-                            sh """yarn install --cache-folder .yarn-cache"""
+                            sh """yarn install"""
                         }
                     }
                 }
-                stage('Fake Linting'){
+                stage('Linting'){
                     steps{
                         container('test-pod'){
-                            sh """sleep 10"""
+				                  sh "cat projects.json && sleep 5"
+                        }
+                    }
+                }
+                stage('Stages to run in Parallel') {
+                    steps {
+                        script {
+                            def json = readJSON file: 'projects.json'
+                            def nx_projects = json["projects"]
+                            parallel nx_projects.collectEntries {
+                                ["${it}" : generateUnitTestStage(it, testPodYaml, "$PVC_NAME", "$WORK_TIME_SIMULATION")]
+                            }
                         }
                     }
                 }
@@ -138,7 +148,7 @@ pipeline {
     post {
         always {
             container('alpine-pod'){
-				      junit (allowEmptyResults: true, testResults: "**/test-results-unit.xml")
+		      junit (allowEmptyResults: true, testResults: "**/test-results-unit.xml")
             }
         }
     }
@@ -158,7 +168,7 @@ def generateUnitTestStage(job, pod_file, pvc, work_time_simulation) {
                         container('test-pod') {
                             sh """
                                 echo "Running tests for project: ${job} in $HOSTNAME"
-                                nx run-many --target=test --projects ${job}  --coverage
+                                #nx run-many --target=test --projects ${job}  --coverage
                                 sleep ${work_time_simulation} #Strictly added to simulate a bit of build time per pod
                                 echo "Done with tests for ${job}"
                             """
