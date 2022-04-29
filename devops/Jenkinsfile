@@ -120,7 +120,7 @@ pipeline {
                 stage('Yarn install'){
                     steps{
                         container('test-pod'){
-                            sh """yarn install"""
+                            sh """pnpm install"""
                         }
                     }
                 }
