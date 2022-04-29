@@ -121,7 +121,7 @@ pipeline {
                 stage('Yarn install'){
                     steps{
                         container('test-pod'){
-                            sh """yarn install"""
+                            sh """yarn install --cache-folder .yarn-cache"""
                         }
                     }
                 }
