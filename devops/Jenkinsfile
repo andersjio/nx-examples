@@ -128,7 +128,7 @@ pipeline {
                 stage('Fake Linting'){
                     steps{
                         container('test-pod'){
-                            sh """Sleep 10"""
+                            sh """sleep 10"""
                         }
                     }
                 }
