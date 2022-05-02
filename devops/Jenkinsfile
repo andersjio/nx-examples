@@ -1,6 +1,6 @@
 def GIT_REPO_URL = "git@github.com:andersjio/nx-examples.git"
 //def BRANCH_NAME = "main"
-def WORK_TIME_SIMULATION = 15
+def WORK_TIME_SIMULATION = 5
 def allJob = env.JOB_NAME.tokenize('/') as String[];
 def projectName = allJob[0];
 def PVC_NAME = projectName + "-" + env.BRANCH_NAME + "-workspace"
@@ -8,7 +8,7 @@ def testPodYaml = """
 spec:
   containers:
   - name: test-pod
-    image: abrj/nx-example-build-node:1.2.0
+    image: abrj/nx-example-build-node:1.4.0
     imagePullPolicy: Always
     command:
     - sleep
@@ -87,7 +87,6 @@ pipeline {
             yaml kubectlYaml
             showRawYaml true
             serviceAccount "jenkins-build-sa"
-            //workspaceVolume dynamicPVC(accessModes: "ReadWriteMany", requestsSize: "2Gi", storageClassName: "efs-sc")
         }
     }
     stages {
@@ -99,7 +98,7 @@ pipeline {
                 }
             }
         }
-        stage('Lint') {
+        stage('Pipeline steps') {
             agent {
                 kubernetes {
                     label "${JOB_NAME}-${BUILD_NUMBER}-lint"
@@ -112,40 +111,35 @@ pipeline {
                 stage('Linting'){
                     steps{
                         container('test-pod'){
-						              sh " sleep 10"
+                            sh """yarn install"""
                         }
                     }
                 }
-            }
-        }
-        stage('Stages to run in Parallel') {
-            agent {
-                kubernetes {
-                    label "${JOB_NAME}-${BUILD_NUMBER}-parallel"
-                    yaml kubectlYaml
-                    workspaceVolume persistentVolumeClaimWorkspaceVolume(claimName: "$PVC_NAME", readOnly: false)
-					showRawYaml false
-                }
-            }
-            stages{
-              stage("Create parallel pod stages"){
-                steps {
-                    script {
-                        def json = readJSON file: 'projects.json'
-                        def nx_projects = json["projects"]
-                        parallel nx_projects.collectEntries {
-                            ["${it}" : generateUnitTestStage(it, testPodYaml, PVC_NAME, "$WORK_TIME_SIMULATION")]
+                stage('Linting'){
+                    steps{
+                        container('test-pod'){
+				                  sh "nx run-many --target=lint --all --parallel --maxParallel=4"
                         }
                     }
                 }
-              }
+                stage('Stages to run in Parallel') {
+                    steps {
+                        script {
+                            def json = readJSON file: 'projects.json'
+                            def nx_projects = json["projects"]
+                            parallel nx_projects.collectEntries {
+                                ["${it}" : generateUnitTestStage(it, testPodYaml, "$PVC_NAME", "$WORK_TIME_SIMULATION")]
+                            }
+                        }
+                    }
+                }
             }
         }
     }
     post {
         always {
             container('alpine-pod'){
-				      junit (allowEmptyResults: true, testResults: "**/test-results-unit.xml")
+		      junit (allowEmptyResults: true, testResults: "**/test-results-unit.xml")
             }
         }
     }
