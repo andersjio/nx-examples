@@ -17,10 +17,10 @@ spec:
     resources:
       limits:
         memory: "3000Mi"
-        cpu: "2"
+        cpu: "1"
       requests:
         memory: "3000Mi"
-        cpu: "2"
+        cpu: "1"
     livenessProbe:
       exec:
         command:
@@ -108,15 +108,6 @@ pipeline {
                 }
             }
             stages{
-                stage('Checkout source code'){
-                    steps {
-                        container('test-pod') {
-                          git branch: env.BRANCH_NAME,
-                          credentialsId: 'private-ssh',
-                          url: "$GIT_REPO_URL"
-                        }
-                    }
-                }
                 stage('Yarn install'){
                     steps{
                         container('test-pod'){
