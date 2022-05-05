@@ -161,7 +161,8 @@ def generateUnitTestStage(job, pod_file, pvc, work_time_simulation) {
             podTemplate(
                 yaml:pod_file,
                 showRawYaml: false,
-                workspaceVolume: persistentVolumeClaimWorkspaceVolume(claimName: pvc, readOnly: false)
+                workspaceVolume: persistentVolumeClaimWorkspaceVolume(claimName: pvc, readOnly: false),
+                idleMinutes: 30
                 )  {
                 node(POD_LABEL) {
                     stage("Unit test ${job}") {
