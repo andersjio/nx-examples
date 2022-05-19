@@ -1,6 +1,6 @@
 def GIT_REPO_URL = "git@github.com:andersjio/nx-examples.git"
 //def BRANCH_NAME = "main"
-def WORK_TIME_SIMULATION = 5
+def WORK_TIME_SIMULATION = 15
 def allJob = env.JOB_NAME.tokenize('/') as String[];
 def projectName = allJob[0];
 def PVC_NAME = projectName + "-" + env.BRANCH_NAME + "-workspace"
